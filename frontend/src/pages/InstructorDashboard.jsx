@@ -1,6 +1,7 @@
 // src/pages/InstructorDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import { Link } from 'react-router-dom';
 
 function InstructorDashboard() {
   const [courses, setCourses] = useState([]);
@@ -8,6 +9,12 @@ function InstructorDashboard() {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadCourseId, setUploadCourseId] = useState(null);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    totalRevenue: 0,
+    totalStudents: 0
+  });
 
   useEffect(() => {
     fetchCourses();
@@ -15,13 +22,27 @@ function InstructorDashboard() {
 
   const fetchCourses = async () => {
     try {
+      setLoading(true);
       const res = await api.get('/courses');
       // filter courses by this instructor if backend doesn't have an endpoint for instructor courses
       // or implement backend API to filter by instructor
       // Here assuming backend returns all, and we don't filter client-side:
-      setCourses(res.data.filter(c => c.instructor?._id === JSON.parse(localStorage.getItem('user'))?.id));
+      const instructorCourses = res.data.filter(c => c.instructor?._id === JSON.parse(localStorage.getItem('user'))?.id);
+      setCourses(instructorCourses);
+      
+      // Calculate stats
+      const totalRevenue = instructorCourses.reduce((sum, course) => sum + (course.price || 0), 0);
+      const totalStudents = instructorCourses.reduce((sum, course) => sum + (course.enrollments?.length || 0), 0);
+      
+      setStats({
+        totalCourses: instructorCourses.length,
+        totalRevenue: totalRevenue,
+        totalStudents: totalStudents
+      });
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,7 +54,7 @@ function InstructorDashboard() {
     e.preventDefault();
     try {
       await api.post('/courses', newCourse);
-      setMessage('Course created');
+      setMessage('Course created successfully!');
       setNewCourse({ title: '', description: '', category: '', price: 0 });
       fetchCourses();
     } catch (err) {
@@ -66,43 +87,276 @@ function InstructorDashboard() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h2>Instructor Dashboard</h2>
-      <form onSubmit={createCourse}>
-        <input name="title" placeholder="Title" value={newCourse.title} onChange={handleNewCourseChange} required />
-        <input name="description" placeholder="Description" value={newCourse.description} onChange={handleNewCourseChange} required />
-        <input name="category" placeholder="Category" value={newCourse.category} onChange={handleNewCourseChange} required />
-        <input name="price" type="number" min="0" step="0.01" value={newCourse.price} onChange={handleNewCourseChange} required />
-        <button type="submit">Create Course</button>
-      </form>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Instructor Dashboard</h1>
+              <p className="text-gray-600 mt-1">Manage your courses and track your teaching success</p>
+            </div>
+            <Link
+              to="/"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+            >
+              Browse All Courses
+            </Link>
+          </div>
+        </div>
+      </div>
 
-      <hr />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Courses</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
+              </div>
+            </div>
+          </div>
 
-      <h3>Your Courses</h3>
-      <ul>
-        {courses.map(course => (
-          <li key={course._id}>
-            {course.title} - {course.category} - ${course.price.toFixed(2)}
-          </li>
-        ))}
-      </ul>
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
 
-      <hr />
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <h3>Upload Course Content</h3>
-      <select onChange={e => setUploadCourseId(e.target.value)} defaultValue="">
-        <option value="" disabled>Select Course</option>
-        {courses.map(course => (
-          <option key={course._id} value={course._id}>
-            {course.title}
-          </option>
-        ))}
-      </select>
-      <input type="file" onChange={handleFileChange} />
-      <button onClick={uploadContent}>Upload Content</button>
+        {/* Create Course Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Course</h2>
+          <form onSubmit={createCourse} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                Course Title
+              </label>
+              <input 
+                id="title"
+                name="title" 
+                placeholder="Enter course title" 
+                value={newCourse.title} 
+                onChange={handleNewCourseChange} 
+                required 
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+              />
+            </div>
 
-      {message && <p>{message}</p>}
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+                Category
+              </label>
+              <input 
+                id="category"
+                name="category" 
+                placeholder="e.g., Programming, Design, Business" 
+                value={newCourse.category} 
+                onChange={handleNewCourseChange} 
+                required 
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
+                Price ($)
+              </label>
+              <input 
+                id="price"
+                name="price" 
+                type="number" 
+                min="0" 
+                step="0.01" 
+                placeholder="0.00" 
+                value={newCourse.price} 
+                onChange={handleNewCourseChange} 
+                required 
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <textarea 
+                id="description"
+                name="description" 
+                placeholder="Describe your course content and what students will learn" 
+                value={newCourse.description} 
+                onChange={handleNewCourseChange} 
+                required 
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 resize-none"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <button 
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                Create Course
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Your Courses Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Courses</h2>
+          
+          {courses.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="mx-auto h-24 w-24 text-gray-300 mb-4">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No courses created yet</h3>
+              <p className="text-gray-600">Start by creating your first course above</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {courses.map(course => (
+                <div key={course._id} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{course.title}</h3>
+                      <p className="text-gray-600 text-sm mb-3">{course.category}</p>
+                      <p className="text-gray-700 text-sm mb-4 line-clamp-2">{course.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-green-600">${course.price.toFixed(2)}</span>
+                        <span className="text-sm text-gray-500">
+                          {course.enrollments?.length || 0} students
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <Link
+                      to={`/course/${course._id}`}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 text-center text-sm font-medium"
+                    >
+                      View Course
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Upload Content Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload Course Content</h2>
+          
+          {courses.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Create a course first to upload content</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <label htmlFor="course-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Course
+                </label>
+                <select 
+                  id="course-select"
+                  onChange={e => setUploadCourseId(e.target.value)} 
+                  defaultValue=""
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white transition-all duration-200"
+                >
+                  <option value="" disabled>Choose a course</option>
+                  {courses.map(course => (
+                    <option key={course._id} value={course._id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="file-upload" className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload File
+                </label>
+                <input 
+                  id="file-upload"
+                  type="file" 
+                  onChange={handleFileChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                />
+              </div>
+
+              <button 
+                onClick={uploadContent}
+                disabled={!uploadCourseId || !uploadFile}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-6 rounded-lg hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 font-medium text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                Upload Content
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Messages */}
+        {message && (
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-800">{message}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

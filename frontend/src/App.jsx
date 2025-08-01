@@ -12,7 +12,7 @@ function App() {
   return (
     // Add your Navbar here
     <Routes>
-      <Route path="/" element={<Signup />} />
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
