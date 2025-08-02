@@ -8,6 +8,8 @@ import CourseDetails from './pages/CourseDetails';
 import PrivateRoute from "./utils/PrivateRoutes";
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import BrowseCourses from './pages/BrowseCourses';
+
 function App() {
   return (
     // Add your Navbar here
@@ -17,6 +19,7 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route path="/browse-courses" element={<BrowseCourses />} />
       <Route path="/dashboard/instructor" element={
         <PrivateRoute allowedRoles={['instructor']}><InstructorDashboard /></PrivateRoute>
       } />

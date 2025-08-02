@@ -1,62 +1,13 @@
 // src/pages/Home.jsx
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 function Home() {
-  const [courses, setCourses] = useState([]);
-  const [filters, setFilters] = useState({ search: '', category: '', min: 0, max: 500 });
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showCourses, setShowCourses] = useState(false);
-
-  const fetchCourses = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const queryParams = new URLSearchParams({
-        ...filters,
-        page,
-        limit: 10,
-      }).toString();
-
-      console.log('Fetching courses with params:', queryParams);
-      const res = await api.get(`/courses?${queryParams}`);
-      console.log('API response:', res.data);
-      
-      // Handle different response structures
-      if (res.data.data) {
-        setCourses(res.data.data);
-        setTotalPages(res.data.totalPages || 1);
-      } else if (Array.isArray(res.data)) {
-        setCourses(res.data);
-        setTotalPages(1);
-      } else {
-        setCourses([]);
-        setTotalPages(1);
-      }
-    } catch (err) {
-      console.error('Error fetching courses:', err);
-      setError('Failed to load courses. Please try again.');
-      setCourses([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBrowseCourses = () => {
-    setShowCourses(true);
-    fetchCourses();
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <section className="relative overflow-hidden bg-white min-h-screen flex items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div className="text-left">
@@ -75,15 +26,15 @@ function Home() {
                 Discover thousands of courses from top instructors. Learn at your own pace and transform your career with our comprehensive learning platform.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={handleBrowseCourses}
+                <Link
+                  to="/browse-courses"
                   className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                   Browse Courses
-                </button>
+                </Link>
                 <Link
                   to="/signup"
                   className="inline-flex items-center px-8 py-4 border-2 border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200"
@@ -210,174 +161,20 @@ function Home() {
         </div>
         
         {/* Enhanced Decorative Elements */}
-        <div className="absolute top-0 left-0 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute top-0 right-0 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-4000"></div>
         
-        {/* Additional Floating Elements */}
-        <div className="absolute top-1/4 right-1/4 w-4 h-4 bg-blue-400 rounded-full animate-ping"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/3 w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+        {/* Additional Floating Elements - Larger and More Prominent */}
+        <div className="absolute top-1/4 right-1/4 w-48 h-48 bg-blue-400 rounded-full animate-ping opacity-40 filter blur-xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-40 h-40 bg-green-400 rounded-full animate-pulse opacity-50 filter blur-lg"></div>
+        <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-purple-400 rounded-full animate-bounce opacity-60 filter blur-md"></div>
+        
+        {/* Extra Large Floating Elements */}
+        <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-indigo-300 rounded-full animate-pulse opacity-30 filter blur-2xl"></div>
+        <div className="absolute bottom-1/3 left-1/4 w-56 h-56 bg-teal-300 rounded-full animate-bounce opacity-40 filter blur-xl"></div>
+        <div className="absolute top-2/3 right-1/6 w-72 h-72 bg-orange-300 rounded-full animate-ping opacity-35 filter blur-3xl"></div>
       </section>
-
-      {/* Courses Section - Only show when user clicks Browse Courses */}
-      {showCourses && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Find Your Perfect Course</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <input
-                type="text"
-                placeholder="Search courses..."
-                value={filters.search}
-                onChange={e => setFilters({ ...filters, search: e.target.value })}
-                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input 
-                placeholder="Category" 
-                value={filters.category}
-                onChange={e => setFilters({ ...filters, category: e.target.value })} 
-                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input 
-                type="number" 
-                placeholder="Min Price"
-                value={filters.min}
-                onChange={e => setFilters({ ...filters, min: e.target.value })}
-                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input
-                type="number" 
-                placeholder="Max Price"
-                value={filters.max}
-                onChange={e => setFilters({ ...filters, max: e.target.value })}
-                className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button 
-                onClick={fetchCourses}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-              >
-                Apply Filters
-              </button>
-            </div>
-          </div>
-
-          {/* Courses Grid */}
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">All Courses</h2>
-            
-            {/* Loading State */}
-            {loading && (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading courses...</p>
-              </div>
-            )}
-
-            {/* Error State */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-red-800">{error}</p>
-                    <button 
-                      onClick={fetchCourses}
-                      className="mt-2 text-sm text-red-600 hover:text-red-500 font-medium"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && !error && courses.length === 0 && (
-              <div className="text-center py-12">
-                <div className="mx-auto h-24 w-24 text-gray-300 mb-4">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
-                <p className="text-gray-600 mb-6">Be the first to create a course!</p>
-                <Link
-                  to="/dashboard/instructor"
-                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-                >
-                  Create Your First Course
-                </Link>
-              </div>
-            )}
-
-            {/* Courses Grid */}
-            {!loading && !error && courses.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {courses.map(course => (
-                  <Link 
-                    key={course._id} 
-                    to={`/course/${course._id}`}
-                    className="block group"
-                  >
-                    <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden">
-                      <div className="h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-                        <span className="text-white text-2xl font-bold">{course.title.charAt(0)}</span>
-                      </div>
-                      <div className="p-6">
-                        <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 mb-2">
-                          {course.title}
-                        </h3>
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            {course.category}
-                          </span>
-                          <span className="text-2xl font-bold text-green-600">
-                            ${course.price}
-                          </span>
-                        </div>
-                        <div className="flex items-center text-gray-500 text-sm">
-                          <span>Click to learn more</span>
-                          <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Pagination */}
-          {!loading && !error && totalPages > 1 && (
-            <div className="flex items-center justify-center space-x-4">
-              <button 
-                disabled={page <= 1} 
-                onClick={() => setPage(page - 1)}
-                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors duration-200"
-              >
-                Previous
-              </button>
-              <span className="text-gray-700 font-medium">
-                Page {page} of {totalPages}
-              </span>
-              <button 
-                disabled={page >= totalPages} 
-                onClick={() => setPage(page + 1)}
-                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors duration-200"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </section>
-      )}
     </div>
   );
 }

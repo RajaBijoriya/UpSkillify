@@ -6,10 +6,29 @@ const courseSchema = new mongoose.Schema({
   category: String,
   rating: { type: Number, default: 0 },
   price: Number,
+  thumbnail: {
+    filename: String,
+    originalName: String,
+    mimetype: String,
+    size: Number,
+    url: String
+  },
+  video: {
+    filename: String,
+    originalName: String,
+    mimetype: String,
+    size: Number,
+    url: String
+  },
   content: [
     {
       title: String,
-      url: String // URL or filepath of uploaded file
+      filename: String,
+      originalName: String,
+      mimetype: String,
+      size: Number,
+      url: String,
+      type: { type: String, enum: ['content', 'thumbnail', 'video'], default: 'content' }
     }
   ],
   instructor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

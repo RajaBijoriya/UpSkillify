@@ -4,41 +4,67 @@ const courseController = require('../controllers/courseController');
 const { auth } = require('../middleware/auth');
 const upload = require('../middleware/upload'); // multer instance
 const Course = require('../models/Course');
+const path = require('path');
+const fs = require('fs');
 
+// Create course with thumbnail and video
+router.post('/', auth(['instructor', 'admin']), upload.fields([
+  { name: 'thumbnail', maxCount: 1 },
+  { name: 'video', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { title, description, category, price } = req.body;
+    const instructor = req.user.id;
 
-router.post('/', auth(['instructor', 'admin']), courseController.createCourse);
-router.get('/', courseController.getAllCourses);
-router.get('/:id', courseController.getCourseById);
-router.put('/:id', auth(['instructor', 'admin']), courseController.updateCourse);
-router.delete('/:id', auth(['instructor', 'admin']), courseController.deleteCourse);
+    const courseData = {
+      title,
+      description,
+      category,
+      price: parseFloat(price),
+      instructor
+    };
 
-
-// Upload course content media
-router.post('/:courseId/upload', auth(['instructor', 'admin']),
-  upload.single('file'), // Field in form-data is name='file'
-  async (req, res) => {
-    try {
-      const course = await Course.findById(req.params.courseId);
-      if (!course) return res.status(404).json({ error: 'Course not found' });
-      if (course.instructor.toString() !== req.user.id && req.user.role !== 'admin')
-        return res.status(403).json({ error: 'Access denied' });
-
-      // Add uploaded file info to course.content
-      const newContent = {
-        title: req.body.title || req.file.originalname,
-        url: req.file.path // or construct full URL if hosting static files
+    // Handle thumbnail upload
+    if (req.files && req.files.thumbnail) {
+      const thumbnail = req.files.thumbnail[0];
+      courseData.thumbnail = {
+        filename: thumbnail.filename,
+        originalName: thumbnail.originalname,
+        mimetype: thumbnail.mimetype,
+        size: thumbnail.size,
+        url: `/uploads/${thumbnail.filename}`
       };
-      course.content.push(newContent);
-      await course.save();
-
-      res.status(201).json({ message: 'File uploaded and added to course', content: newContent });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
     }
-  }
-);
 
-// GET /api/courses?category=Programming&minPrice=10&maxPrice=100&search=js&page=1&limit=10
+    // Handle video upload
+    if (req.files && req.files.video) {
+      const video = req.files.video[0];
+      courseData.video = {
+        filename: video.filename,
+        originalName: video.originalname,
+        mimetype: video.mimetype,
+        size: video.size,
+        url: `/uploads/${video.filename}`
+      };
+    }
+
+    const course = new Course(courseData);
+    await course.save();
+
+    res.status(201).json({ 
+      message: 'Course created successfully', 
+      course: {
+        ...course.toObject(),
+        thumbnail: courseData.thumbnail,
+        video: courseData.video
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get course with filtering and pagination
 router.get('/', async (req, res) => {
   try {
     const { category, minPrice, maxPrice, search, page = 1, limit = 10 } = req.query;
@@ -75,5 +101,60 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+router.get('/:id', courseController.getCourseById);
+router.put('/:id', auth(['instructor', 'admin']), courseController.updateCourse);
+router.delete('/:id', auth(['instructor', 'admin']), courseController.deleteCourse);
+
+// Upload course content, thumbnail, or video
+router.post('/:courseId/upload', auth(['instructor', 'admin']),
+  upload.single('file'),
+  async (req, res) => {
+    try {
+      const course = await Course.findById(req.params.courseId);
+      if (!course) return res.status(404).json({ error: 'Course not found' });
+      if (course.instructor.toString() !== req.user.id && req.user.role !== 'admin')
+        return res.status(403).json({ error: 'Access denied' });
+
+      const { type } = req.body; // 'content', 'thumbnail', 'video'
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const fileData = {
+        filename: file.filename,
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        url: `/uploads/${file.filename}`,
+        type: type || 'content'
+      };
+
+      // Handle different upload types
+      if (type === 'thumbnail') {
+        course.thumbnail = fileData;
+      } else if (type === 'video') {
+        course.video = fileData;
+      } else {
+        // Add to content array
+        course.content.push({
+          title: req.body.title || file.originalname,
+          ...fileData
+        });
+      }
+
+      await course.save();
+
+      res.status(201).json({ 
+        message: `${type || 'Content'} uploaded successfully`, 
+        file: fileData 
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 module.exports = router;

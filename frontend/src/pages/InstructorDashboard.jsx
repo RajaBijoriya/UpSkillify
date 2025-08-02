@@ -5,9 +5,17 @@ import { Link } from 'react-router-dom';
 
 function InstructorDashboard() {
   const [courses, setCourses] = useState([]);
-  const [newCourse, setNewCourse] = useState({ title: '', description: '', category: '', price: 0 });
+  const [newCourse, setNewCourse] = useState({ 
+    title: '', 
+    description: '', 
+    category: '', 
+    price: 0,
+    thumbnail: null,
+    video: null
+  });
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadCourseId, setUploadCourseId] = useState(null);
+  const [uploadType, setUploadType] = useState('content'); // 'content', 'thumbnail', 'video'
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -31,7 +39,7 @@ function InstructorDashboard() {
       setCourses(instructorCourses);
       
       // Calculate stats
-      const totalRevenue = instructorCourses.reduce((sum, course) => sum + (course.price || 0), 0);
+      const totalRevenue = instructorCourses.reduce((sum, course) => sum + (parseFloat(course.price) || 0), 0);
       const totalStudents = instructorCourses.reduce((sum, course) => sum + (course.enrollments?.length || 0), 0);
       
       setStats({
@@ -50,19 +58,42 @@ function InstructorDashboard() {
     setNewCourse({ ...newCourse, [e.target.name]: e.target.value });
   };
 
+  const handleFileChange = (e, field) => {
+    const file = e.target.files[0];
+    if (file) {
+      setNewCourse({ ...newCourse, [field]: file });
+    }
+  };
+
   const createCourse = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/courses', newCourse);
+      const formData = new FormData();
+      formData.append('title', newCourse.title);
+      formData.append('description', newCourse.description);
+      formData.append('category', newCourse.category);
+      formData.append('price', newCourse.price);
+      
+      if (newCourse.thumbnail) {
+        formData.append('thumbnail', newCourse.thumbnail);
+      }
+      
+      if (newCourse.video) {
+        formData.append('video', newCourse.video);
+      }
+
+      await api.post('/courses', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setMessage('Course created successfully!');
-      setNewCourse({ title: '', description: '', category: '', price: 0 });
+      setNewCourse({ title: '', description: '', category: '', price: 0, thumbnail: null, video: null });
       fetchCourses();
     } catch (err) {
       setMessage(err.response?.data?.error || 'Failed to create course');
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleUploadFileChange = (e) => {
     setUploadFile(e.target.files[0]);
   };
 
@@ -75,12 +106,13 @@ function InstructorDashboard() {
       const formData = new FormData();
       formData.append('file', uploadFile);
       formData.append('title', uploadFile.name);
+      formData.append('type', uploadType);
 
       await api.post(`/courses/${uploadCourseId}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setMessage('File uploaded successfully.');
-      // Optional: refresh course list to show new content
+      setUploadFile(null);
       fetchCourses();
     } catch (err) {
       setMessage(err.response?.data?.error || 'Upload failed');
@@ -167,56 +199,72 @@ function InstructorDashboard() {
         {/* Create Course Section */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Course</h2>
-          <form onSubmit={createCourse} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                Course Title
-              </label>
-              <input 
-                id="title"
-                name="title" 
-                placeholder="Enter course title" 
-                value={newCourse.title} 
-                onChange={handleNewCourseChange} 
-                required 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
-              />
+          <form onSubmit={createCourse} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                  Course Title
+                </label>
+                <input 
+                  id="title"
+                  name="title" 
+                  placeholder="Enter course title" 
+                  value={newCourse.title} 
+                  onChange={handleNewCourseChange} 
+                  required 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+                  Category
+                </label>
+                <input 
+                  id="category"
+                  name="category" 
+                  placeholder="e.g., Programming, Design, Business" 
+                  value={newCourse.category} 
+                  onChange={handleNewCourseChange} 
+                  required 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
+                  Price ($)
+                </label>
+                <input 
+                  id="price"
+                  name="price" 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  value={newCourse.price} 
+                  onChange={handleNewCourseChange} 
+                  required 
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-700 mb-2">
+                  Course Thumbnail
+                </label>
+                <input 
+                  id="thumbnail"
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, 'thumbnail')}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                />
+                <p className="text-xs text-gray-500 mt-1">Recommended: 1280x720px, JPG/PNG</p>
+              </div>
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              <input 
-                id="category"
-                name="category" 
-                placeholder="e.g., Programming, Design, Business" 
-                value={newCourse.category} 
-                onChange={handleNewCourseChange} 
-                required 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                Price ($)
-              </label>
-              <input 
-                id="price"
-                name="price" 
-                type="number" 
-                min="0" 
-                step="0.01" 
-                placeholder="0.00" 
-                value={newCourse.price} 
-                onChange={handleNewCourseChange} 
-                required 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
-              />
-            </div>
-
-            <div className="md:col-span-2">
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
@@ -232,7 +280,21 @@ function InstructorDashboard() {
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
+              <label htmlFor="video" className="block text-sm font-medium text-gray-700 mb-2">
+                Course Introduction Video
+              </label>
+              <input 
+                id="video"
+                type="file" 
+                accept="video/*"
+                onChange={(e) => handleFileChange(e, 'video')}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+              />
+              <p className="text-xs text-gray-500 mt-1">Recommended: MP4, WebM, or MOV format</p>
+            </div>
+
+            <div>
               <button 
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -267,7 +329,7 @@ function InstructorDashboard() {
                       <p className="text-gray-600 text-sm mb-3">{course.category}</p>
                       <p className="text-gray-700 text-sm mb-4 line-clamp-2">{course.description}</p>
                       <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold text-green-600">${course.price.toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-green-600">${(course.price || 0).toFixed(2)}</span>
                         <span className="text-sm text-gray-500">
                           {course.enrollments?.length || 0} students
                         </span>
@@ -319,15 +381,41 @@ function InstructorDashboard() {
               </div>
 
               <div>
+                <label htmlFor="upload-type" className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload Type
+                </label>
+                <select 
+                  id="upload-type"
+                  value={uploadType}
+                  onChange={e => setUploadType(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white transition-all duration-200"
+                >
+                  <option value="content">Course Content (PDF, DOC, etc.)</option>
+                  <option value="thumbnail">Course Thumbnail (Image)</option>
+                  <option value="video">Course Video</option>
+                </select>
+              </div>
+
+              <div>
                 <label htmlFor="file-upload" className="block text-sm font-medium text-gray-700 mb-2">
                   Upload File
                 </label>
                 <input 
                   id="file-upload"
                   type="file" 
-                  onChange={handleFileChange}
+                  onChange={handleUploadFileChange}
+                  accept={
+                    uploadType === 'thumbnail' ? 'image/*' : 
+                    uploadType === 'video' ? 'video/*' : 
+                    '.pdf,.doc,.docx,.txt,.ppt,.pptx'
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {uploadType === 'thumbnail' ? 'Accepted: JPG, PNG, GIF' :
+                   uploadType === 'video' ? 'Accepted: MP4, WebM, MOV' :
+                   'Accepted: PDF, DOC, DOCX, TXT, PPT, PPTX'}
+                </p>
               </div>
 
               <button 
@@ -335,7 +423,7 @@ function InstructorDashboard() {
                 disabled={!uploadCourseId || !uploadFile}
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-6 rounded-lg hover:from-green-700 hover:to-emerald-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 font-medium text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Upload Content
+                Upload {uploadType === 'thumbnail' ? 'Thumbnail' : uploadType === 'video' ? 'Video' : 'Content'}
               </button>
             </div>
           )}

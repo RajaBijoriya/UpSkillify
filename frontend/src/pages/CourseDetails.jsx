@@ -128,6 +128,17 @@ function CourseDetails() {
           <div className="lg:col-span-2">
             {/* Course Header */}
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+              {/* Course Thumbnail */}
+              {course.thumbnail && (
+                <div className="mb-6">
+                  <img 
+                    src={`http://localhost:5000${course.thumbnail.url}`} 
+                    alt={course.title}
+                    className="w-full h-64 object-cover rounded-lg shadow-md"
+                  />
+                </div>
+              )}
+
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1">
                   <h2 className="text-3xl font-bold text-gray-900 mb-4">{course.title}</h2>
@@ -136,7 +147,7 @@ function CourseDetails() {
                       {course.category}
                     </span>
                     <span className="text-2xl font-bold text-green-600">
-                      ${course.price.toFixed(2)}
+                      ${(course.price || 0).toFixed(2)}
                     </span>
                   </div>
                   <p className="text-gray-700 text-lg leading-relaxed mb-6">
@@ -161,6 +172,27 @@ function CourseDetails() {
               </div>
             </div>
 
+            {/* Course Introduction Video */}
+            {course.video && (
+              <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Course Introduction Video</h3>
+                <div className="relative">
+                  <video 
+                    controls 
+                    className="w-full rounded-lg shadow-md"
+                    poster={course.thumbnail ? `http://localhost:5000${course.thumbnail.url}` : undefined}
+                  >
+                    <source src={`http://localhost:5000${course.video.url}`} type={course.video.mimetype} />
+                    Your browser does not support the video tag.
+                  </video>
+                  <div className="mt-4 text-sm text-gray-600">
+                    <p><strong>File:</strong> {course.video.originalName}</p>
+                                            <p><strong>Size:</strong> {((course.video.size || 0) / (1024 * 1024)).toFixed(2)} MB</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Course Content */}
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-6">Course Content</h3>
@@ -175,10 +207,18 @@ function CourseDetails() {
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{item.title}</h4>
                         <p className="text-sm text-gray-600">{item.type}</p>
+                        <p className="text-xs text-gray-500">
+                          {((item.size || 0) / (1024 * 1024)).toFixed(2)} MB
+                        </p>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {item.duration || 'N/A'}
-                      </div>
+                      <a 
+                        href={`http://localhost:5000${item.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm"
+                      >
+                        Download
+                      </a>
                     </div>
                   ))}
                 </div>
@@ -223,7 +263,7 @@ function CourseDetails() {
             {/* Enrollment Card */}
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-6 sticky top-8">
               <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">${course.price.toFixed(2)}</h3>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">${(course.price || 0).toFixed(2)}</h3>
                 <p className="text-gray-600">One-time payment</p>
               </div>
 
