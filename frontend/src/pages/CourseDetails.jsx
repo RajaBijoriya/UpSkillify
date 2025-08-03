@@ -59,7 +59,7 @@ function CourseDetails() {
 
   const handleDirectEnroll = async () => {
     try {
-      await api.post('/enroll', { courseId: course._id });
+      await api.post(`/enroll/${course._id}`);
       setMessage('Successfully enrolled in the course!');
       setIsEnrolled(true);
       setEnrollmentProgress(0);

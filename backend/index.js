@@ -11,9 +11,23 @@ app.use(cors({
 }));
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(console.error);
+// MongoDB connection with fallback to local database
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/upskillify';
+console.log('Attempting to connect to MongoDB:', mongoUri.replace(/\/\/.*@/, '//***:***@')); // Hide credentials in logs
+
+mongoose.connect(mongoUri)
+  .then(() => {
+    console.log('✅ MongoDB connected successfully');
+    console.log('Database:', mongoose.connection.name);
+  })
+  .catch((error) => {
+    console.error('❌ MongoDB connection failed:', error.message);
+    console.log('\n🔧 To fix this issue:');
+    console.log('1. Install MongoDB locally: https://www.mongodb.com/try/download/community');
+    console.log('2. Or create a .env file with MONGO_URI=your_mongodb_connection_string');
+    console.log('3. Or use MongoDB Atlas: https://cloud.mongodb.com/');
+    process.exit(1);
+  });
 
 // Import routes
 app.use('/api/auth', require('./routes/auth'));

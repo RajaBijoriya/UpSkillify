@@ -2,12 +2,16 @@ const express = require('express');
 const router = express.Router();
 const enrollmentController = require('../controllers/enrollmentController');
 const { auth } = require('../middleware/auth');
+const Enrollment = require('../models/Enrollment');
 
 // Enroll in a course (only student role)
 router.post('/:courseId', auth(['student']), enrollmentController.enrollInCourse);
 
 // Get all enrollments of current user (student, instructor, admin)
 router.get('/', auth(['student', 'instructor', 'admin']), enrollmentController.getUserEnrollments);
+
+// Get all enrollments for instructor's courses
+router.get('/instructor', auth(['instructor', 'admin']), enrollmentController.getInstructorEnrollments);
 
 
 // Update progress of enrollment

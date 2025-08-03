@@ -2,14 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 function BrowseCourses() {
+  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [filters, setFilters] = useState({ search: '', category: '', min: 0, max: 500 });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [enrolledCourses, setEnrolledCourses] = useState(new Set());
+  const [enrollingCourses, setEnrollingCourses] = useState(new Set());
+  const [message, setMessage] = useState('');
 
   const fetchCourses = async () => {
     try {
@@ -50,9 +55,59 @@ function BrowseCourses() {
     }
   };
 
+  const fetchUserEnrollments = async () => {
+    if (!user || user.role !== 'student') return;
+    
+    try {
+      const res = await api.get('/enroll');
+      const enrolledIds = new Set(res.data.map(enrollment => enrollment.course._id));
+      setEnrolledCourses(enrolledIds);
+    } catch (err) {
+      console.error('Error fetching enrollments:', err);
+    }
+  };
+
+  const handleEnroll = async (courseId) => {
+    if (!user) {
+      setMessage('Please login to enroll in courses.');
+      return;
+    }
+    
+    if (user.role !== 'student') {
+      setMessage('Only students can enroll in courses.');
+      return;
+    }
+
+    if (enrolledCourses.has(courseId)) {
+      setMessage('You are already enrolled in this course.');
+      return;
+    }
+
+    setEnrollingCourses(prev => new Set([...prev, courseId]));
+    
+    try {
+      await api.post(`/enroll/${courseId}`);
+      setEnrolledCourses(prev => new Set([...prev, courseId]));
+      setMessage('Successfully enrolled in the course!');
+    } catch (err) {
+      console.error('Enrollment error:', err);
+      setMessage(err.response?.data?.error || 'Failed to enroll in course.');
+    } finally {
+      setEnrollingCourses(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(courseId);
+        return newSet;
+      });
+    }
+  };
+
   useEffect(() => {
     fetchCourses();
   }, [page]);
+
+  useEffect(() => {
+    fetchUserEnrollments();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -118,6 +173,32 @@ function BrowseCourses() {
           </div>
         </div>
 
+        {/* Messages */}
+        {message && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-800">{message}</p>
+              </div>
+              <div className="ml-auto pl-3">
+                <button
+                  onClick={() => setMessage('')}
+                  className="text-blue-400 hover:text-blue-600"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Courses Grid */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">All Courses</h2>
@@ -180,48 +261,97 @@ function BrowseCourses() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses.map(course => {
                   console.log('Rendering course:', course);
+                  const isEnrolled = enrolledCourses.has(course._id);
+                  const isEnrolling = enrollingCourses.has(course._id);
+                  
                   return (
-                    <Link 
-                      key={course._id} 
-                      to={`/course/${course._id}`}
-                      className="block group"
-                    >
-                      <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden">
-                        {/* Course Thumbnail */}
-                        {course.thumbnail ? (
-                          <div className="h-48 overflow-hidden">
-                            <img 
-                              src={`http://localhost:5000${course.thumbnail.url}`}
-                              alt={course.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-                            <span className="text-white text-2xl font-bold">{course.title?.charAt(0) || 'C'}</span>
-                          </div>
-                        )}
-                        <div className="p-6">
-                          <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 mb-2">
-                            {course.title || 'Untitled Course'}
-                          </h3>
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {course.category || 'General'}
-                            </span>
-                            <span className="text-2xl font-bold text-green-600">
-                              ${(course.price || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex items-center text-gray-500 text-sm">
-                            <span>Click to learn more</span>
-                            <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
+                    <div key={course._id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden">
+                      {/* Course Thumbnail */}
+                      {course.thumbnail ? (
+                        <div className="h-48 overflow-hidden">
+                          <img 
+                            src={`http://localhost:5000${course.thumbnail.url}`}
+                            alt={course.title}
+                            className="w-full h-full object-cover transition-transform duration-300"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                          <span className="text-white text-2xl font-bold">{course.title?.charAt(0) || 'C'}</span>
+                        </div>
+                      )}
+                      <div className="p-6">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                          {course.title || 'Untitled Course'}
+                        </h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                            {course.category || 'General'}
+                          </span>
+                          <span className="text-2xl font-bold text-green-600">
+                            ${(course.price || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex space-x-2 mb-4">
+                          <Link
+                            to={`/course/${course._id}`}
+                            className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium text-center text-sm"
+                          >
+                            View Details
+                          </Link>
+                          
+                          {user && user.role === 'student' && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleEnroll(course._id);
+                              }}
+                              disabled={isEnrolled || isEnrolling}
+                              className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all duration-200 ${
+                                isEnrolled
+                                  ? 'bg-green-100 text-green-700 cursor-not-allowed'
+                                  : isEnrolling
+                                  ? 'bg-blue-100 text-blue-700 cursor-not-allowed'
+                                  : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+                              }`}
+                            >
+                              {isEnrolled ? (
+                                <span className="flex items-center justify-center">
+                                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                  Enrolled
+                                </span>
+                              ) : isEnrolling ? (
+                                <span className="flex items-center justify-center">
+                                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Enrolling...
+                                </span>
+                              ) : (
+                                'Enroll Now'
+                              )}
+                            </button>
+                          )}
+                          
+                          {(!user || user.role !== 'student') && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleEnroll(course._id);
+                              }}
+                              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium text-sm"
+                            >
+                              Enroll Now
+                            </button>
+                          )}
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>

@@ -23,19 +23,44 @@ function InstructorDashboard() {
     totalRevenue: 0,
     totalStudents: 0
   });
+  const [enrollmentData, setEnrollmentData] = useState({});
+  const [showEnrollments, setShowEnrollments] = useState(false);
 
   useEffect(() => {
     fetchCourses();
+    fetchEnrollmentData();
   }, []);
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
       const res = await api.get('/courses');
-      // filter courses by this instructor if backend doesn't have an endpoint for instructor courses
-      // or implement backend API to filter by instructor
-      // Here assuming backend returns all, and we don't filter client-side:
-      const instructorCourses = res.data.filter(c => c.instructor?._id === JSON.parse(localStorage.getItem('user'))?.id);
+      console.log('Courses API response:', res.data);
+      console.log('Response type:', typeof res.data);
+      
+      // Handle different response structures
+      let coursesData = [];
+      if (Array.isArray(res.data)) {
+        coursesData = res.data;
+      } else if (res.data && Array.isArray(res.data.data)) {
+        coursesData = res.data.data;
+      } else if (res.data && typeof res.data === 'object') {
+        // If it's an object, try to extract courses
+        coursesData = Object.values(res.data).filter(item => item && typeof item === 'object');
+      }
+      
+      console.log('Processed courses data:', coursesData);
+      
+      // Filter courses by this instructor
+      const currentUserId = JSON.parse(localStorage.getItem('user') || '{}')?.id;
+      console.log('Current user ID:', currentUserId);
+      
+      const instructorCourses = coursesData.filter(c => 
+        c && c.instructor && 
+        (c.instructor._id === currentUserId || c.instructor === currentUserId)
+      );
+      
+      console.log('Instructor courses found:', instructorCourses.length);
       setCourses(instructorCourses);
       
       // Calculate stats
@@ -48,9 +73,46 @@ function InstructorDashboard() {
         totalStudents: totalStudents
       });
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching courses:', err);
+      console.error('Error details:', err.response?.data);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEnrollmentData = async () => {
+    try {
+      console.log('Fetching enrollment data...');
+      const res = await api.get('/enroll/instructor');
+      console.log('Enrollment API response:', res.data);
+      console.log('Response type:', typeof res.data);
+      console.log('Response keys:', Object.keys(res.data || {}));
+      
+      setEnrollmentData(res.data || {});
+      
+      // Update stats with accurate enrollment data
+      const totalStudents = Object.values(res.data || {}).reduce((sum, courseData) => sum + (courseData?.totalStudents || 0), 0);
+      console.log('Total students calculated:', totalStudents);
+      setStats(prev => ({ ...prev, totalStudents }));
+      
+      // Also try to get all enrollments as fallback
+      console.log('Attempting fallback enrollment fetch...');
+      const allEnrollments = await api.get('/enroll');
+      console.log('All enrollments response:', allEnrollments.data);
+      
+    } catch (err) {
+      console.error('Error fetching enrollment data:', err);
+      console.error('Error details:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      
+      // Try alternative approach - get all enrollments and filter
+      try {
+        console.log('Trying alternative approach...');
+        const allEnrollments = await api.get('/enroll');
+        console.log('Alternative enrollments:', allEnrollments.data);
+      } catch (altErr) {
+        console.error('Alternative approach also failed:', altErr);
+      }
     }
   };
 
@@ -194,6 +256,156 @@ function InstructorDashboard() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Student Enrollment Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Student Enrollments</h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={fetchEnrollmentData}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+              <button
+                onClick={() => setShowEnrollments(!showEnrollments)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200"
+              >
+                {showEnrollments ? (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                    Hide Details
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Show Details
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Debug Info */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Debug:</strong> Enrollment data keys: {Object.keys(enrollmentData).length} | 
+                Data: {JSON.stringify(Object.keys(enrollmentData))}
+              </p>
+              <p className="text-sm text-yellow-800 mt-2">
+                <strong>Courses:</strong> {courses.length} courses found
+              </p>
+              <p className="text-sm text-yellow-800 mt-1">
+                <strong>User ID:</strong> {JSON.parse(localStorage.getItem('user') || '{}')?.id || 'Not found'}
+              </p>
+            </div>
+          )}
+
+          {/* Course Enrollment Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {Object.entries(enrollmentData).map(([courseId, data]) => (
+              <div key={courseId} className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-2 truncate">{data.course.title}</h3>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Students Enrolled:</span>
+                  <span className="text-lg font-bold text-blue-600">{data.totalStudents}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-sm text-gray-600">Category:</span>
+                  <span className="text-sm text-gray-800">{data.course.category}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-sm text-gray-600">Price:</span>
+                  <span className="text-sm font-medium text-green-600">${data.course.price}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {Object.keys(enrollmentData).length === 0 && (
+            <div className="text-center py-8">
+              <div className="mx-auto h-12 w-12 text-gray-300 mb-4">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Students Enrolled Yet</h3>
+              <p className="text-gray-600">Create and publish courses to start getting student enrollments.</p>
+            </div>
+          )}
+
+          {/* Detailed Student Information */}
+          {showEnrollments && Object.keys(enrollmentData).length > 0 && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-gray-900 border-t pt-6">Detailed Student Information</h3>
+              {Object.entries(enrollmentData).map(([courseId, data]) => (
+                <div key={courseId} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-4">
+                    <h4 className="text-lg font-medium text-gray-900">{data.course.title}</h4>
+                    <p className="text-sm text-gray-600 mt-1">{data.totalStudents} students enrolled</p>
+                  </div>
+                  <div className="divide-y divide-gray-200">
+                    {data.enrollments.map((enrollment) => (
+                      <div key={enrollment._id} className="px-6 py-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-sm font-medium text-blue-600">
+                                {enrollment.student.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{enrollment.student.name}</p>
+                            <p className="text-sm text-gray-500">{enrollment.student.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-6">
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-900">Progress</p>
+                            <div className="flex items-center mt-1">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${enrollment.progress}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-600">{enrollment.progress}%</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-900">Enrolled</p>
+                            <p className="text-sm text-gray-500">
+                              {new Date(enrollment.enrolledAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              enrollment.paymentStatus === 'paid' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {enrollment.paymentStatus}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Create Course Section */}

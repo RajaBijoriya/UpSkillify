@@ -1,0 +1,11 @@
+# Copy this content to a new file called .env (without .txt extension)
+# Replace the placeholder values with your actual Atlas credentials
+
+MONGO_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@ac-hqqmj0n-shard-00-00.dgymyuo.mongodb.net/upskillify?retryWrites=true&w=majority
+JWT_SECRET=your-super-secret-jwt-key-change-this-to-something-random
+
+# Instructions:
+# 1. Create a new file called .env (no extension) in the backend folder
+# 2. Copy the above content into it
+# 3. Replace YOUR_USERNAME and YOUR_PASSWORD with your actual MongoDB Atlas credentials
+# 4. Save the file
