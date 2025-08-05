@@ -295,22 +295,7 @@ function InstructorDashboard() {
             </div>
           </div>
 
-          {/* Debug Info */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-yellow-800">
-                <strong>Debug:</strong> Enrollment data keys: {Object.keys(enrollmentData).length} | 
-                Data: {JSON.stringify(Object.keys(enrollmentData))}
-              </p>
-              <p className="text-sm text-yellow-800 mt-2">
-                <strong>Courses:</strong> {courses.length} courses found
-              </p>
-              <p className="text-sm text-yellow-800 mt-1">
-                <strong>User ID:</strong> {JSON.parse(localStorage.getItem('user') || '{}')?.id || 'Not found'}
-              </p>
-            </div>
-          )}
-
+          
           {/* Course Enrollment Overview */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {Object.entries(enrollmentData).map(([courseId, data]) => (
